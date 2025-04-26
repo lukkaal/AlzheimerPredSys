@@ -1,0 +1,39 @@
+1）SQLAlchemy ORM 编程
+用 Python 类来操作数据库，像操作对象一样操作数据库记录，省去了手写 SQL 的繁琐
+->
+from sqlalchemy.ext.declarative import declarative_base
+Base = declarative_base()
+这就是第一步 接下来的所有 ORM 模型（数据库表）类都需要继承 Base
+
+class Gesture(Base):
+    __tablename__ = 'Gesture'
+这个类是一个 ORM 数据模型类，用于映射数据库中名为 Gesture 的表。
+这是 SQLAlchemy 规定的属性，用于显式指定数据库中对应的表名。
+也就是说，这个类的数据将存储在名为 Gesture 的数据库表中
+
+from sqlalchemy import Column, VARCHAR, TEXT, LargeBinary
+TEXT 类型通常用来表示任意长度的字符串。
+使用 VARCHAR(100) 表示最多允许 100 个字符。
+VARCHAR(2048) 是限制其最大长度为 2048 字符。
+LargeBinary 是用于存储二进制数据的字段类型。（文件（如图片、音频、PDF）/ 加密数据/ 模型或向量（序列化后的 numpy 或 torch 张量）/ 自定义协议编码后的字节流）
+
+
+->
+创建完成结构之后，就是创建数据库连接引擎、会话（Session）工厂
+并提供一个可复用的数据库会话获取器 get_db() 等一系列的操作
+为什么？
+-> 连接数据库（只连接一次）/ 访问数据库（每次请求时创建临时连接）/ 自动关闭连接（不手动关闭容易出错）/ 事务安全（出错时回滚，不影响数据库）
+
+1. sessionmaker 来创建一个工厂函数（每次调用都能生成新的会话）
+这是为了确保每一次数据库操作是独立的，不冲突。
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit = False,autoflush = False, bind = engine)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+整体写法是为了让你在项目中 只配置一次连接机制，之后在每次请求中都能 轻松、安全、自动地获取和关闭数据库连接，避免手动管理事务、连接泄露等复杂问题。
+
+--- 在实际写项目的时候，会在 route 中设置 db: Session = Depends(get_db)

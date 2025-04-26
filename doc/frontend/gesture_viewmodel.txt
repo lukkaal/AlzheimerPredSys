@@ -1,0 +1,54 @@
+1）@riverpod
+class GestureViewmodel extends _$GestureViewmodel
+“我要生成一个 AutoDisposeAsyncNotifierProvider<GestureViewmodel, AsyncValue<GestureModel>?> 
+并使用 build() 方法初始化状态。”
+
+->@riverpod：这个注解表示你要使用 codegen + 自定义 ViewModel 的方式创建 Provider；
+->GestureViewmodel：你的 Provider 的名字；
+->extends _$GestureViewmodel：Riverpod 会自动生成 _$GestureViewmodel，用于连接 Provider 和 UI
+简而言之 _$GestureViewmodel 是在最开始的时候自动生成的，这个 GestureViewmodel 会负责状态是 AsyncValue<GestureModel>? 的状态管理。
+
+2）late AuthRemoteRepository _authRemoteRepository;
+->
+使用 late 关键字说明这个变量不会立刻初始化，但保证在首次使用前完成初始化。
+类型是你自己定义的 AuthRemoteRepository，它应该是一个类，封装了你与后端 API 通信的逻辑。
+
+3）@override
+AsyncValue<GestureModel>? build() {
+  _authRemoteRepository = ref.watch(authRemoteRepositoryProvider);
+  return null;}
+在 Riverpod 中，这个 build() 方法：
+是 Provider 创建的时候执行的“初始化函数”；
+提供一个地方让你设置初始化状态，比如 const AsyncValue.loading()；
+或者像你现在这样，返回 null，说明暂时没有状态。
+->
+_authRemoteRepository = ref.watch(authRemoteRepositoryProvider);
+通过 ref.watch(...)，监听了一个叫做 authRemoteRepositoryProvider 的 provider；
+把它的值赋给了 _authRemoteRepository，供之后使用；
+*** 这个 Provider 的返回值应该是 AuthRemoteRepository 类型的实例 ***
+
+4）Riverpod 的 build() 方法 何时 会被调用？
+->
+当你第一次使用 ref.watch(gestureViewmodelProvider) 或 ref.read(gestureViewmodelProvider) 等方法访问它时，才会触发构建。gestureViewmodelProvider 构建完成之后，就可以使用里面的各种方法了。
+
+------------------------
+等于说 在 flutter 框架中使用 @riverpod 去创建一个 viewmodel，这个 viewmodel 实际上是一个用来维护某个变量状态的框架 1.这个框架本身并不关心这个变量所面向的业务逻辑，框架本身只是关心这个变量的”状态“，也就是所谓的AsyncValue.loading 等三个状态。2. 对于 UI 来说 关心的是什么时候该改变 UI，所以 UI 会关心状态，而 flutter 提供 riverpod（provider）来创建 iewModelProvider ，这常是一个 状态管理单元，比如 AsyncNotifier<GestureModel>，它内部持有业务状态（正在加载、数据、错误）并暴露给 UI。
+所以在 viewmodel 里完成 build 初始化状态之后，在实际定义函数如  Future<void> uploadGesture 的时候，就应该时刻关注状态，如 state = const AsyncValue.loading()
+ref.listen 和 watch 都代表的是只要你的 Widget（或其它 consumer 逻辑）依然存活，watch/listen 都会生效，直到它们被销毁，也就是一直监听/订阅后续的变化。
+------------------------
+
+--> riverpod 支持的 provider
+类型 | 是否有状态 | 典型用法
+Provider<T> | ❌ | 注入只读/不可变的服务或常量
+StateProvider<T> | ✅ | 简单可变值（计数器、开关、文本输入值等）
+StateNotifierProvider | ✅ | 复杂状态管理，封装增删改查等业务逻辑
+FutureProvider / StreamProvider | ✅ | 处理异步数据，自动管理 loading/data/error 三种状态
+AsyncNotifierProvider | ✅ | Riverpod 2 推荐的异步状态管理，支持更多细粒度控制
+
+build() 的签名决定状态类型
+@override
+AsyncValue<GestureModel>? build() { … }
+->
+build() 方法的返回值类型 AsyncValue<GestureModel>? 告诉生成器：
+这是一个 异步状态（因为用的是 AsyncValue）。
+状态携带的具体数据类型是 GestureModel。

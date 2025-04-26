@@ -1,0 +1,37 @@
+1）ref.watch(authViewModelProvider.select((val) => val?.isLoading == true)) -> authViewModelProvider
+final authViewModelProvider = AutoDisposeNotifierProvider<
+  AuthViewModel,              // 控制器类型
+  AsyncValue<UserModel>?      // 状态类型
+>
+-> AutoDisposeNotifierProvider
+NotifierProvider：提供一个带状态的逻辑控制器
+AutoDispose：当这个 Provider 不再被任何 widget 使用时，自动清除（释放资源）
+
+-> AuthViewModel 是逻辑
+即业务逻辑控制器（状态处理类）
+
+-> AsyncValue 是状态包装器（来自 Riverpod）
+AsyncLoading()	正在加载
+AsyncData(data)	数据已返回成功（data 是你的内容）
+AsyncError()	加载失败，附带错误信息
+---
+<UserModel> 是业务的具体数据类型
+加载中 ➜ AsyncLoading<UserModel>()
+加载成功 ➜ AsyncData(UserModel(...))
+加载失败 ➜ AsyncError(error, stackTrace)
+
+2）AsyncValue<T> 
+AsyncValue<T> 是 Flutter（准确说是 Riverpod，一个状态管理库）中用于处理异步状态的一个非常核心的抽象类。它的作用是：统一表示异步数据的三种状态：加载中（loading）、成功（data）、失败（error），避免在 UI 层手动去判断 Future/try-catch 的状态
+->异步获取一个 T 类型的数据
+在 UI 当中使用 ref.watch/ listen 来获取状态并作出相应的逻辑处理，不用手动去判断状态 会自动监听 authViewModelProvider 提供的状态值。一旦在 ViewModel 中执行 state = xxx，UI 就自动响应
+
+3）ref
+ref.watch(provider)
+会重建 UI/ 在 widget 中响应状态变化（常用）
+
+ref.listen(provider, (prev, next) => ...)
+不 rebuild UI，但在 provider 改变时执行 副作用（side effect）
+
+ref.read(provider)
+常用于事件处理函数中（例如点击按钮、网络请求中读取值）
+不会触发 UI rebuild，也不会随着 provider 的变化而更新

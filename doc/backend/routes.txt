@@ -1,0 +1,97 @@
+1） FastAPI 的两大核心能力：
+def gesture_cloudinary(gesture: Gesture_upload, db: Session=Depends(get_db))
+
+使用 Pydantic 模型接收并验证请求体（gesture: Gesture_upload）
+->
+FastAPI 自动从 POST 或 PUT 请求的 JSON 体中读取数据，转换为你定义的 Gesture_upload 类型，并自动验证字段。
+这是 FastAPI 强类型、自动文档生成、数据校验的核心机制。
+
+使用依赖注入机制管理数据库会话（db: Session = Depends(get_db)）
+->
+Depends(get_db) 会让 FastAPI 自动处理数据库连接的生命周期：
+请求开始时创建 session/ 请求结束时关闭 session（即使中途报错也能关闭）
+这是连接 SQLAlchemy 和 FastAPI 最稳定、最优雅的方式。
+FastAPI 会自动执行 get_db()，把数据库会话对象传回，整个请求生命周期内都是安全的，并且请求结束后自动关闭连接。
+
+2）关于多个层次之间的联系
+输入阶段
+JSON → Pydantic 输入模型：保证了类型正确、必填/可选规则、字段别名、默认值等都被统一处理。
+
+业务阶段
+Pydantic → ORM：手动或借助工具把一部分字段拷贝到 ORM 对象，执行数据库操作。
+
+输出阶段
+ORM → Pydantic 输出模型 → JSON：有了 orm_mode，FastAPI 能自动读取 ORM 对象字段，生成干净的响应。
+
+HTTP 层 关注网络与序列化
+Pydantic 层 负责验证和转换
+ORM 层 负责持久化和查询
+
+3）整体和后端进行交互的流程：
+->
+客户端：构造并发送 HTTP 请求
+jsonEncode(...)
+把 Dart 的 Map<String, dynamic> 转成一个 JSON 字符串
+
+构造 HTTP 请求
+方法：POST
+URL：http://127.0.0.1:8000/gesture/gesture_cloudinary
+请求头：
+Content-Type: application/json
+Content-Length: <字节长度>
+Host: 127.0.0.1:8000
+请求体：上面生成的 JSON 字符串，以 UTF-8 字节流发送
+
+底层网络
+DNS 解析（127.0.0.1 直接 IP，无 DNS）
+TCP 三次握手
+将上述字节流通过 TCP 发送到本机 8000 端口
+
+->
+服务端：Uvicorn → Starlette → FastAPI → Pydantic → 业务逻辑
+Uvicorn 接收原始 HTTP
+解析请求行、请求头
+根据 Content-Length 读取请求体字节
+
+Starlette 路由分发
+匹配路径 /gesture/gesture_cloudinary 与 router.post 装饰的函数
+请求体 JSON 解析
+
+Starlette 调用 await request.json()
+把字节流解码为 Python 字符串，再 json.loads() 得到 Python dict
+
+Pydantic 输入模型
+gesture: Gesture_upload = Gesture_upload.parse_obj(request_dict)
+检查 id、name、trajectory、pressure 四个字段
+类型转换（如 "123" → 123，若可能）
+若校验失败，FastAPI 自动返回 422 错误
+
+db: Session = Depends(get_db)
+调用 get_db() → 生成一个 SQLAlchemy Session，并在请求结束后自动关闭
+
+返回 ORM 对象实例
+
+->
+服务端：序列化 ORM → JSON → HTTP 响应
+GestureResponse.from_orm(gesture_db)
+
+读取 ORM 对象的 .id、.name、.trajectory、.pressure、.description 属性
+构造一个 Pydantic 输出模型实例
+.dict() → JSON 字符串
+
+状态码：200 OK
+头部：
+content-type: application/json
+content-length: <字节长度>
+Body：上面生成的 JSON 字符串（UTF-8）
+
+->
+TCP 四次挥手接收完整字节流
+http.post Future 完成，返回 http.Response
+class Response {
+  final int statusCode;  // e.g. 200
+  final String body;     // JSON 字符串
+  final Map<String, String> headers;
+}
+从 JSON 字符串解析为 Dart 的 Map<String, dynamic>
+取出 id、name、trajectory、……等字段，渲染到 UI 或后续逻辑

@@ -1,0 +1,215 @@
+// import 'package:flutter/material.dart';
+//
+// class DrawingPage extends StatefulWidget {
+//   const DrawingPage({super.key});
+//
+//   @override
+//   State<DrawingPage> createState() => _DrawingPageState();
+// }
+//
+// class _DrawingPageState extends State<DrawingPage> {
+//   List<Offset?> points = [];
+//   double width = 800;
+//   double height = 500;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text("Drawing App"),
+//         actions: [
+//           GestureDetector(
+//             onTap: (){
+//               setState(() {
+//                 points.clear();
+//               });
+//             },
+//             child: Icon(Icons.import_contacts)
+//           ),
+//           GestureDetector(
+//               onTap: (){
+//                 setState(() {
+//                   // 将 points 中的 Offset 对象转换为 (dx, dy) 的形式
+//                   List<String> Points = points
+//                       .where((point) => point != null) // 过滤掉 null
+//                       .map((point) {
+//                     // 减去 400 和 250
+//                     double adjustedDx = point!.dx - width/2;
+//                     double adjustedDy = point.dy - height/2;
+//                     return '($adjustedDx, $adjustedDy)'; // 返回调整后的字符串
+//                   })
+//                       .toList();
+//
+//                   print(Points);
+//                 });
+//               },
+//               child: Icon(Icons.add_a_photo)
+//           )
+//         ],
+//       ),
+//       body: Padding(
+//         padding: const EdgeInsets.all(8.0),
+//         child: Padding(
+//           padding: const EdgeInsets.all(8.0),
+//           child: Row(
+//             mainAxisAlignment: MainAxisAlignment.center,
+//             children: [
+//               Column(
+//                 children: [
+//                   GestureDetector(
+//                     onPanUpdate: (details) {
+//                       setState(() {
+//                         if (details.localPosition.dx >= 0 &&
+//                             details.localPosition.dx <= width &&
+//                             details.localPosition.dy >= 0 &&
+//                             details.localPosition.dy <= height) {
+//                           points.add(details.localPosition); // 只有在范围内时才添加
+//                         }
+//                       });
+//                     },
+//                     onPanEnd: (details) {
+//                       points.add(null); // 分隔不同的绘制线段
+//                     },
+//                     child: CustomPaint(
+//                       size: Size(width, height),
+//                       painter: DrawingPainter(points),
+//                     ),
+//                   ),
+//                   SizedBox(height: 30,),
+//                   Container(
+//                     color: Colors.grey,
+//                     child: Text('submit'),
+//                   )
+//                 ],
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+//
+// class DrawingPainter extends CustomPainter {
+//   final List<Offset?> points;
+//
+//   DrawingPainter(this.points);
+//
+//   @override
+//   void paint(Canvas canvas, Size size) {
+//     // Offset center = Offset(size.width / 2, size.height / 2);
+//     // print("Center point: (${center.dx}, ${center.dy})"); // 打印中心点坐标
+//
+//     final borderPaint = Paint()
+//       ..color = Colors.white // 边框颜色
+//       ..style = PaintingStyle.stroke
+//       ..strokeWidth = 2; // 边框宽度
+//     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), borderPaint);
+//     final paint = Paint()
+//       ..color = Colors.white
+//       ..style = PaintingStyle.stroke
+//       ..strokeCap = StrokeCap.round
+//       ..strokeWidth = 5;
+//
+//     for (int i = 0; i < points.length - 1; i++) {
+//       if (points[i] != null && points[i + 1] != null) {
+//         canvas.drawLine(points[i]!, points[i + 1]!, paint);
+//       }
+//     }
+//   }
+//
+//   @override
+//   bool shouldRepaint(CustomPainter oldDelegate) {
+//     return true; // 每次都重新绘制
+//   }
+// }
+
+// import 'package:flutter/material.dart';
+// import '../widgets/custompaint/drawingpainter.dart';
+// import '../widgets/custompaint/pointdata.dart';
+//
+// class DrawingPage extends StatefulWidget {
+//   const DrawingPage({super.key});
+//
+//   @override
+//   State<DrawingPage> createState() => _DrawingPageState();
+// }
+//
+// class _DrawingPageState extends State<DrawingPage> {
+//   List<PointData> points = [];
+//   double width = 800;
+//   double height = 500;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text("Drawing App"),
+//         actions: [
+//           GestureDetector(
+//             onTap: () {
+//               setState(() {
+//                 points.clear();
+//               });
+//             },
+//             child: Icon(Icons.import_contacts),
+//           ),
+//           GestureDetector(
+//             onTap: () {
+//               setState(() {
+//                 // 将 points 中的 PointData 对象转换为 (dx, dy, pressure) 的形式
+//                 List<String> formattedPoints = points
+//                     .map((point) => 'trajectory: (${point.position.dx - width/2}, ${point.position.dy - height/2}), pressure: (${point.pressure})')
+//                     .toList();
+//
+//                 print(formattedPoints);
+//               });
+//             },
+//             child: Icon(Icons.add_a_photo),
+//           ),
+//         ],
+//       ),
+//       body: Padding(
+//         padding: const EdgeInsets.all(8.0),
+//         child: Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Column(
+//               children: [
+//                 Listener(
+//                   onPointerMove: (PointerMoveEvent event) {
+//                     setState(() {
+//                       if (event.localPosition.dx >= 0 &&
+//                           event.localPosition.dx <= width &&
+//                           event.localPosition.dy >= 0 &&
+//                           event.localPosition.dy <= height) {
+//                         // 获取压力值
+//                         double pressure = event.pressure; // 从 PointerMoveEvent 中获取压力值
+//                         points.add(PointData(event.localPosition, pressure));
+//                       }
+//                     });
+//                   },
+//                   onPointerDown: (PointerDownEvent event) {
+//                     // 处理指针按下事件，如果需要
+//                   },
+//                   onPointerUp: (PointerUpEvent event) {
+//                     // 分隔不同的绘制线段
+//                   },
+//                   child: CustomPaint(
+//                     size: Size(width, height),
+//                     painter: DrawingPainter(points.map((point) => point.position).toList()),
+//                   ),
+//                 ),
+//                 SizedBox(height: 30),
+//                 Container(
+//                   color: Colors.grey,
+//                   child: Text('submit'),
+//                 ),
+//               ],
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+

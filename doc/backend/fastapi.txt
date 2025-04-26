@@ -1,0 +1,10 @@
+FastAPI 主要扮演后端服务器的角色，负责处理业务逻辑、数据处理与存储、与前端交互等任务
+
+1）@router.post('/upload') 定义了一个处理 /upload 路径 POST 请求的路由
+当有请求到来时，对应的函数就会被执行
+
+2）app.include_router(auth.router, prefix='/auth')
+FastAPI 是一个高性能的 Python Web 框架，借助它能够快速构建 API。app 这个实例是整个应用的核心，之后的路由、中间件等配置都会围绕它来进行。
+这行代码的功能是把 auth 模块里定义的路由集成到主应用中。
+auth.router：auth 一般是一个 Python 模块，router 则是在这个模块中创建的 APIRouter 实例。APIRouter 可用来组织和管理一组相关的路由，这样能让代码结构更清晰。
+prefix='/auth'：为 auth 模块里的所有路由添加一个前缀 /auth。也就是说，auth 模块中定义的路由路径都会以 /auth 开头。例如，若 auth.router 里有一个 /login 路由，集成到主应用后，实际的访问路径就变成了 /auth/login。

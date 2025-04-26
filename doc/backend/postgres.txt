@@ -1,0 +1,44 @@
+1）出现过的代码
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from fastapi import Depends, HTTPException
+
+# 1. 数据库连接 URL，格式：dialect://username:password@host:port/database
+DATABASE_URL = 'postgresql://postgres:123456@localhost:5433/fluttermusicapp'
+
+# 2. 创建数据库引擎（Engine），底层管理连接池和连接
+engine = create_engine(DATABASE_URL)
+
+# 3. 创建会话工厂（SessionLocal），用于生成 Session 对象：
+#    - autocommit=False：需要手动调用 commit 提交事务
+#    - autoflush=False：避免自动 flush，更好地控制何时写入数据库
+#    - bind=engine：绑定到上面创建的 engine
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 4. 定义依赖函数 get_db，用于 FastAPI 注入数据库会话
+def get_db():
+    db: Session = SessionLocal()  # 生成一个新的 Session 实例
+    try:
+        yield db                  # 提供给路由函数使用
+    finally:
+        db.close()                # 请求结束后一定要关闭，释放连接
+
+# —————————— 在路由函数内部对数据库的操作 ——————————
+
+# 查询是否存在相同 id 的记录
+gesture_db = db.query(Gesture).filter(Gesture.id == gesture.id).first()
+if gesture_db:
+    # 如果已存在则抛出 400 错误
+    raise HTTPException(400, 'ID 已存在')
+
+# 构造新的 ORM 实例
+gesture_db = Gesture(
+    id=gesture.id,
+    name=gesture.name,
+    trajectory=trajectory_url,
+    pressure=pressure_file_url,
+    description=description
+)
+db.add(gesture_db)       # 将实例加入当前事务
+db.commit()              # 提交事务，将数据写入数据库
+db.refresh(gesture_db)   # 刷新实例，从数据库获取最新属性值

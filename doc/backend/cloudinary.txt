@@ -1,0 +1,25 @@
+1）出现过的代码注释
+import cloudinary
+import cloudinary.uploader
+
+# （假设在程序启动时已使用 cloudinary.config() 完成 API Key、Secret 等配置）
+
+# 1. 上传轨迹 CSV 文件（resource_type='raw' 表示普通文件而非图片/视频）
+trajectory_response = cloudinary.uploader.upload(
+    trajectory_temp_file_path,
+    resource_type='raw',
+    folder=f'gesturemodel/{gesture.name}',       # 上传到指定文件夹
+    public_id=f'trajectory_{gesture.name}'       # 自定义文件名
+)
+
+# 2. 上传压力 CSV 文件
+pressure_response = cloudinary.uploader.upload(
+    pressure_temp_file_path,
+    resource_type='raw',
+    folder=f'gesturemodel/{gesture.name}',
+    public_id=f'pressure_{gesture.name}'
+)
+
+# 3. 从 Cloudinary 返回的响应中提取公开访问 URL
+trajectory_url = trajectory_response.get("url")
+pressure_file_url = pressure_response.get("url")

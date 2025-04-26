@@ -1,0 +1,16 @@
+1）什么是 pydantic 
+Pydantic 是一个用于数据验证和数据解析的 Python 库。包括有数据验证（Validation）/数据转换（Parsing / Coercion）/错误报告（精确、可读的错误信息）/默认值支持、字段别名、嵌套模型 等高级特性
+这让 Python 写数据结构时变得像写强类型语言一样安全，但又保持 Python 的简洁。
+
+typing 是 Python 提供的标准库，用于类型提示。List[str] 是一个泛型，用来表示“字符串类型组成的列表”。
+
+简而言之，使用 pydantic 规范化了数据格式
+
+from pydantic import BaseModel
+from typing import List
+class Gesture_upload(BaseModel):
+    id: str
+    name: str
+    trajectory: List[str]
+    pressure: List[str]
+定义完成之后，Gesture_upload 就是一种数据结构了

@@ -1,0 +1,102 @@
+关于MVVM架构的理解（基于 auth 的 signup 来说）
+
+1）viewmodel 和 UI（view）
+在 flutter 框架中使用 @riverpod 去创建一个 viewmodel，这个 viewmodel 实际上是一个用来维护某个变量状态的框架 
+1.这个框架本身并不关心这个变量所面向的业务逻辑，框架本身只是关心这个变量的”状态“，也就是所谓的AsyncValue.loading 等三个状态。
+2. 对于 UI 来说 关心的是什么时候该改变 UI，所以 UI 会关心状态，而 flutter 提供 riverpod（provider）来创建 iewModelProvider ，这常是一个 状态管理单元，比如 AsyncNotifier<GestureModel>，它内部持有业务状态（正在加载、数据、错误）并暴露给 UI。
+3. 所以在 viewmodel 里完成 build 初始化状态之后，在实际定义函数如  Future<void> uploadGesture 的时候，就应该时刻关注状态，如 state = const AsyncValue.loading()
+4. ref.listen 和 watch 都代表的是只要你的 Widget（或其它 consumer 逻辑）依然存活，watch/listen 都会生效，直到它们被销毁，也就是一直监听/订阅后续的变化。
+
+2）viewmodel 本身如何被构建
+1. @riverpod
+ class GestureViewmodel extends _$GestureViewmodel
+->extends _$GestureViewmodel：Riverpod 会自动生成 _$GestureViewmodel，用于连接 Provider 和 UI
+而 build 当中写的代码隐式告诉了 riverpod 应该如何生成 $GestureViewmodel（也就是是什么样子的 provider）
+
+2. late AuthRemoteRepository _authRemoteRepository;
+  @override
+  AsyncValue<GestureModel>? build() {
+    _authRemoteRepository = ref.watch(authRemoteRepositoryProvider);
+    return null;}
+->在 build 的时候初始化一个业务逻辑的 repo (ref.watch(authRemoteRepositoryProvider))，因为 viewmodel 本身除了向上管理 UI 之外，也需要调用 model 中的业务逻辑代码（repo），两个都是 provider，但区别在于 viewmodel 有状态，而repo 没有状态，所以 ref.watch(authRemoteRepositoryProvider) 这里只是获取到实例对象而已，并没有获取到状态。
+viewmodel 在管理状态服务于 UI 的同时，也需要调用到实际的业务代码 model，并且根据业务的返回结果来改变状态。这也是 MVVM 实际起作用的地方。
+
+3）Future<void> uploadGesture 和 await ref.read(gestureViewmodelProvider.notifier).uploadGesture(...);
+->
+Future - await 是相对应的
+这个方法是异步的，并且它本身不返回任何有用结果（void）。
+可以用 await 来等待它执行完毕
+
+调用后端（远程）上传接口，上传手势数据，返回一个 Either<AppFailure, UserModel>。
+Left(AppFailure) 表示失败
+Right(UserModel) 表示成功，返回用户模型数据
+--> 执行完成之后 会根据逻辑打印（如果函数中有）以及根据 ref.listen 的触发来更新 UI 
+
+3）整体和后端进行交互的流程：
+->
+客户端：构造并发送 HTTP 请求
+jsonEncode(...)
+把 Dart 的 Map<String, dynamic> 转成一个 JSON 字符串
+
+构造 HTTP 请求
+方法：POST
+URL：http://127.0.0.1:8000/gesture/gesture_cloudinary
+请求头：
+Content-Type: application/json
+Content-Length: <字节长度>
+Host: 127.0.0.1:8000
+请求体：上面生成的 JSON 字符串，以 UTF-8 字节流发送
+
+底层网络
+DNS 解析（127.0.0.1 直接 IP，无 DNS）
+TCP 三次握手
+将上述字节流通过 TCP 发送到本机 8000 端口
+
+->
+服务端：Uvicorn → Starlette → FastAPI → Pydantic → 业务逻辑
+Uvicorn 接收原始 HTTP
+解析请求行、请求头
+根据 Content-Length 读取请求体字节
+
+Starlette 路由分发
+匹配路径 /gesture/gesture_cloudinary 与 router.post 装饰的函数
+请求体 JSON 解析
+
+Starlette 调用 await request.json()
+把字节流解码为 Python 字符串，再 json.loads() 得到 Python dict
+
+Pydantic 输入模型
+gesture: Gesture_upload = Gesture_upload.parse_obj(request_dict)
+检查 id、name、trajectory、pressure 四个字段
+类型转换（如 "123" → 123，若可能）
+若校验失败，FastAPI 自动返回 422 错误
+
+db: Session = Depends(get_db)
+调用 get_db() → 生成一个 SQLAlchemy Session，并在请求结束后自动关闭
+
+返回 ORM 对象实例
+
+->
+服务端：序列化 ORM → JSON → HTTP 响应
+GestureResponse.from_orm(gesture_db)
+
+读取 ORM 对象的 .id、.name、.trajectory、.pressure、.description 属性
+构造一个 Pydantic 输出模型实例
+.dict() → JSON 字符串
+
+状态码：200 OK
+头部：
+content-type: application/json
+content-length: <字节长度>
+Body：上面生成的 JSON 字符串（UTF-8）
+
+->
+TCP 四次挥手接收完整字节流
+http.post Future 完成，返回 http.Response
+class Response {
+  final int statusCode;  // e.g. 200
+  final String body;     // JSON 字符串
+  final Map<String, String> headers;
+}
+从 JSON 字符串解析为 Dart 的 Map<String, dynamic>
+取出 id、name、trajectory、……等字段，渲染到 UI 或后续逻辑

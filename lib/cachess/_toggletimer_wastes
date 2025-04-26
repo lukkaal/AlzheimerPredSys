@@ -1,0 +1,17 @@
+
+  // void _toggleTimer() {
+  //   if (_timer == null) {
+  //     // 开始计时
+  //     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+  //       setState(() {
+  //         _elapsedTime ++;
+  //       });
+  //     });
+  //   } else {
+  //     // 停止计时
+  //     _timer?.cancel();
+  //     _timer = null;
+  //     print('Elapsed time: $_elapsedTime seconds');
+  //     _elapsedTime = 0; // 重置计时器
+  //   }
+  // }
